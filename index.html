@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deep Neural Network</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg:     #07090f;
+    --bg2:    #0d1017;
+    --bg3:    #131720;
+    --border: #1e2433;
+    --accent: #4a8fff;
+    --adim:   rgba(74,143,255,.1);
+    --text:   #cdd6f0;
+    --muted:  #4a5470;
+    --serif:  'Playfair Display', serif;
+    --mono:   'IBM Plex Mono', monospace;
+    --sans:   'IBM Plex Sans', sans-serif;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh; }
+
+  body::before {
+    content:''; position:fixed; inset:0;
+    background-image: radial-gradient(circle, rgba(74,143,255,.045) 1px, transparent 1px);
+    background-size: 36px 36px;
+    pointer-events:none; z-index:0;
+  }
+
+  /* HEADER */
+  header {
+    position:relative; z-index:10;
+    padding: 36px 56px 32px;
+    border-bottom: 1px solid var(--border);
+    display:flex; align-items:center; gap:32px;
+  }
+  .header-left { display:flex; flex-direction:column; gap:6px; }
+  header h1 {
+    font-family:var(--serif); font-size:32px; font-weight:700;
+    color:var(--text); letter-spacing:-.015em; line-height:1;
+  }
+  header h1 span { color:var(--accent); }
+  .header-sub {
+    font-family:var(--mono); font-size:10px;
+    letter-spacing:.12em; text-transform:uppercase; color:var(--muted);
+  }
+  .header-stats { margin-left:auto; display:flex; gap:0; align-items:stretch; }
+  .hstat {
+    display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:4px; padding:0 32px;
+    border-left:1px solid var(--border);
+  }
+  .hstat:last-child { border-right:1px solid var(--border); }
+  .hstat-val { font-family:var(--mono); font-size:22px; font-weight:500; color:var(--accent); line-height:1; }
+  .hstat-lbl { font-family:var(--mono); font-size:8.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+
+  /* LAYOUT */
+  main {
+    position:relative; z-index:1;
+    display:grid; grid-template-columns:1fr 1fr;
+    gap:18px; padding:28px 56px 56px;
+    max-width:1440px;
+  }
+
+  /* CARD */
+  .card {
+    background:var(--bg2); border:1px solid var(--border);
+    border-radius:10px; overflow:hidden;
+    animation:rise .5s ease both;
+  }
+  @keyframes rise { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+  .card:nth-child(1){animation-delay:.04s} .card:nth-child(2){animation-delay:.10s}
+  .card:nth-child(3){animation-delay:.16s} .card:nth-child(4){animation-delay:.22s}
+  .card:nth-child(5){animation-delay:.28s}
+
+  .card-head {
+    padding:16px 22px 14px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:12px;
+  }
+  .card-title { font-family:var(--serif); font-size:14px; font-weight:600; color:var(--text); }
+  .card-badge {
+    margin-left:auto; padding:3px 11px; border-radius:20px;
+    font-family:var(--mono); font-size:9px; letter-spacing:.08em; text-transform:uppercase;
+    background:var(--adim); color:var(--accent); border:1px solid rgba(74,143,255,.18);
+  }
+  .card-body { padding:22px; }
+
+  /* METRICS */
+  .mrow { grid-column:1/-1; display:grid; grid-template-columns:repeat(5,1fr); gap:14px; }
+  .metric {
+    background:var(--bg3); border:1px solid var(--border); border-radius:9px;
+    padding:20px 22px 18px; display:flex; flex-direction:column; gap:7px;
+    position:relative; overflow:hidden;
+    transition:border-color .25s, box-shadow .25s; cursor:default;
+  }
+  .metric:hover { border-color:rgba(74,143,255,.35); box-shadow:0 0 28px rgba(74,143,255,.07); }
+  .metric::after {
+    content:''; position:absolute; bottom:0; left:0; right:0; height:2px;
+    background:linear-gradient(90deg,var(--accent),transparent); opacity:.5;
+  }
+  .m-lbl { font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  .m-val { font-family:var(--mono); font-size:28px; font-weight:500; color:var(--accent); line-height:1; letter-spacing:-.02em; }
+  .m-sub { font-family:var(--sans); font-size:10px; color:var(--muted); font-weight:300; }
+
+  /* CHART */
+  .chart-wrap { height:220px; }
+
+  /* ARCH */
+  .arch-list { display:flex; flex-direction:column; gap:8px; }
+  .arch-row {
+    display:flex; align-items:center; gap:14px; padding:11px 15px;
+    background:var(--bg3); border-radius:7px; border:1px solid var(--border);
+    transition:border-color .2s;
+  }
+  .arch-row:hover { border-color:rgba(74,143,255,.28); }
+  .arch-idx { font-family:var(--mono); font-size:10px; color:var(--muted); width:14px; text-align:right; flex-shrink:0; }
+  .arch-info { flex:1; min-width:0; }
+  .arch-name { font-family:var(--sans); font-size:12px; font-weight:500; }
+  .arch-sub  { font-family:var(--mono); font-size:9px; color:var(--muted); margin-top:2px; }
+  .arch-bar-bg { width:90px; height:3px; background:var(--bg); border-radius:2px; overflow:hidden; margin-top:6px; }
+  .arch-bar-fill { height:100%; border-radius:2px; background:var(--accent); opacity:.6; }
+  .arch-act {
+    font-family:var(--mono); font-size:9px; padding:3px 10px; border-radius:4px;
+    background:var(--adim); color:var(--accent); letter-spacing:.06em; flex-shrink:0;
+  }
+  .arch-act.inp { color:var(--muted); background:transparent; border:1px solid var(--border); }
+
+  /* NETWORK */
+  #net-wrap { position:relative; width:100%; height:300px; }
+  #net-canvas { width:100%; height:100%; display:block; }
+
+  /* PER-CLASS */
+  .class-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+  .class-cell {
+    background:var(--bg3); border:1px solid var(--border); border-radius:8px;
+    padding:14px 14px 12px; display:flex; flex-direction:column; gap:6px;
+    transition:border-color .2s;
+  }
+  .class-cell:hover { border-color:rgba(74,143,255,.3); }
+  .cc-digit { font-family:var(--serif); font-size:26px; font-weight:700; color:var(--accent); line-height:1; }
+  .cc-bar-bg { height:3px; background:var(--bg); border-radius:2px; overflow:hidden; }
+  .cc-bar-fill { height:100%; border-radius:2px; background:var(--accent); }
+  .cc-pct { font-family:var(--mono); font-size:10px; color:var(--text); }
+  .cc-detail { font-family:var(--mono); font-size:8px; color:var(--muted); }
+
+  /* TRAINING DETAILS */
+  .details-grid { display:grid; grid-template-columns:1fr 1fr; gap:0; }
+  .detail-block {
+    padding:18px 22px; border-bottom:1px solid var(--border);
+    display:flex; flex-direction:column; gap:5px;
+  }
+  .detail-block:nth-child(odd)  { border-right:1px solid var(--border); }
+  .detail-block:nth-last-child(-n+2) { border-bottom:none; }
+  .db-label { font-family:var(--mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .db-value { font-family:var(--mono); font-size:15px; font-weight:500; color:var(--text); }
+  .db-note  { font-family:var(--sans); font-size:10px; color:var(--muted); font-weight:300; }
+
+  ::-webkit-scrollbar { width:5px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>Deep <span>Neural Network</span></h1>
+    <div class="header-sub">Handwritten Digit Classification &middot; NumPy from Scratch</div>
+  </div>
+  <div class="header-stats">
+    <div class="hstat"><div class="hstat-val">97.5%</div><div class="hstat-lbl">Test Accuracy</div></div>
+    <div class="hstat"><div class="hstat-val">100%</div><div class="hstat-lbl">Train Accuracy</div></div>
+    <div class="hstat"><div class="hstat-val">~23K</div><div class="hstat-lbl">Parameters</div></div>
+    <div class="hstat"><div class="hstat-val">0.0016</div><div class="hstat-lbl">Final Loss</div></div>
+  </div>
+</header>
+
+<main>
+
+  <div class="mrow">
+    <div class="metric">
+      <div class="m-lbl">Test Accuracy</div><div class="m-val">97.5%</div>
+      <div class="m-sub">360 held-out samples</div>
+    </div>
+    <div class="metric">
+      <div class="m-lbl">Train Accuracy</div><div class="m-val">100%</div>
+      <div class="m-sub">1,437 training samples</div>
+    </div>
+    <div class="metric">
+      <div class="m-lbl">Final Loss</div><div class="m-val">0.0016</div>
+      <div class="m-sub">Cross-entropy at iter 3,000</div>
+    </div>
+    <div class="metric">
+      <div class="m-lbl">Parameters</div><div class="m-val">23,178</div>
+      <div class="m-sub">Trainable weights &amp; biases</div>
+    </div>
+    <div class="metric">
+      <div class="m-lbl">Misclassified</div><div class="m-val">9</div>
+      <div class="m-sub">out of 360 test samples</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Training Loss</div>
+      <div class="card-badge">3,000 iterations</div>
+    </div>
+    <div class="card-body">
+      <div class="chart-wrap"><canvas id="lossChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Architecture</div>
+      <div class="card-badge">He initialization</div>
+    </div>
+    <div class="card-body" style="padding:16px 18px;">
+      <div class="arch-list" id="archList"></div>
+    </div>
+  </div>
+
+  <div class="card" style="grid-column:1/-1;">
+    <div class="card-head">
+      <div class="card-title">Network Structure</div>
+      <div class="card-badge">5 layers &middot; fully connected</div>
+    </div>
+    <div class="card-body" style="padding:18px 22px;">
+      <div id="net-wrap"><canvas id="net-canvas"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Per-Class Accuracy</div>
+      <div class="card-badge">test set</div>
+    </div>
+    <div class="card-body">
+      <div class="class-grid" id="classGrid"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Training Details</div>
+      <div class="card-badge">configuration</div>
+    </div>
+    <div class="details-grid">
+      <div class="detail-block">
+        <div class="db-label">Dataset</div>
+        <div class="db-value">sklearn Digits</div>
+        <div class="db-note">1,797 samples &middot; 64 features &middot; 10 classes</div>
+      </div>
+      <div class="detail-block">
+        <div class="db-label">Optimizer</div>
+        <div class="db-value">Gradient Descent</div>
+        <div class="db-note">Learning rate 0.1 &middot; 3,000 iterations</div>
+      </div>
+      <div class="detail-block">
+        <div class="db-label">Weight Init</div>
+        <div class="db-value">He Normal</div>
+        <div class="db-note">scale = &radic;(2 / n_prev) &middot; prevents vanishing gradients</div>
+      </div>
+      <div class="detail-block">
+        <div class="db-label">Loss Function</div>
+        <div class="db-value">Cross-Entropy</div>
+        <div class="db-note">Softmax output &middot; multiclass classification</div>
+      </div>
+      <div class="detail-block">
+        <div class="db-label">Hidden Activation</div>
+        <div class="db-value">ReLU</div>
+        <div class="db-note">Layers 1&ndash;3 &middot; max(0, z)</div>
+      </div>
+      <div class="detail-block">
+        <div class="db-label">Train / Test Split</div>
+        <div class="db-value">80 / 20</div>
+        <div class="db-note">Stratified &middot; random seed 42</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+
+const COST_HISTORY = [
+  [0,2.3331],[300,0.0618],[600,0.0236],[900,0.0122],
+  [1200,0.0075],[1500,0.0051],[1800,0.0038],
+  [2100,0.0030],[2400,0.0024],[2700,0.0020],[3000,0.0016]
+];
+
+const LAYER_DIMS   = [64, 128, 64, 32, 10];
+const LAYER_LABELS = ['Input','Hidden 1','Hidden 2','Hidden 3','Output'];
+const LAYER_ACTS   = ['input','ReLU','ReLU','ReLU','Softmax'];
+
+const CLASS_RESULTS = [
+  {digit:0,correct:35,total:35},{digit:1,correct:35,total:36},
+  {digit:2,correct:35,total:35},{digit:3,correct:36,total:37},
+  {digit:4,correct:36,total:36},{digit:5,correct:37,total:37},
+  {digit:6,correct:36,total:36},{digit:7,correct:36,total:36},
+  {digit:8,correct:33,total:34},{digit:9,correct:35,total:37},
+];
+
+// ── LOSS CHART ────────────────────────────────────────────
+
+function buildLossChart() {
+  new Chart(document.getElementById('lossChart').getContext('2d'), {
+    type:'line',
+    data:{
+      labels: COST_HISTORY.map(d=>d[0]),
+      datasets:[{
+        data: COST_HISTORY.map(d=>d[1]),
+        borderColor:'rgba(74,143,255,1)', backgroundColor:'rgba(74,143,255,.06)',
+        borderWidth:2, pointRadius:4,
+        pointBackgroundColor:'rgba(74,143,255,1)',
+        pointBorderColor:'#0d1017', pointBorderWidth:1.5,
+        fill:true, tension:0.35
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'#131720', borderColor:'#1e2433', borderWidth:1,
+          titleColor:'#4a5470', bodyColor:'#4a8fff', padding:10,
+          titleFont:{family:'IBM Plex Mono',size:10},
+          bodyFont:{family:'IBM Plex Mono',size:11},
+          callbacks:{
+            title:i=>`Iteration ${i[0].label}`,
+            label:i=>`  Loss: ${i.raw.toFixed(6)}`
+          }
+        }
+      },
+      scales:{
+        x:{
+          title:{display:true,text:'Iteration',color:'#4a5470',font:{family:'IBM Plex Mono',size:9}},
+          grid:{color:'rgba(255,255,255,.025)'},
+          ticks:{color:'#4a5470',font:{family:'IBM Plex Mono',size:9},maxTicksLimit:8}
+        },
+        y:{
+          title:{display:true,text:'Cross-Entropy Loss',color:'#4a5470',font:{family:'IBM Plex Mono',size:9}},
+          grid:{color:'rgba(255,255,255,.025)'},
+          ticks:{color:'#4a5470',font:{family:'IBM Plex Mono',size:9}}
+        }
+      }
+    }
+  });
+}
+
+// ── ARCHITECTURE ──────────────────────────────────────────
+
+function buildArch() {
+  const c = document.getElementById('archList');
+  const mx = Math.max(...LAYER_DIMS);
+  LAYER_DIMS.forEach((d,i) => {
+    const params = i===0 ? '—' : (() => {
+      const p = d*LAYER_DIMS[i-1]+d;
+      return p>=1000 ? (p/1000).toFixed(2)+'K' : p;
+    })();
+    c.innerHTML += `
+      <div class="arch-row">
+        <div class="arch-idx">${i}</div>
+        <div class="arch-info">
+          <div class="arch-name">${LAYER_LABELS[i]}</div>
+          <div class="arch-sub">${d} units &middot; ${params} params</div>
+          <div class="arch-bar-bg">
+            <div class="arch-bar-fill" style="width:${Math.round(d/mx*100)}%"></div>
+          </div>
+        </div>
+        <div class="arch-act ${i===0?'inp':''}">${LAYER_ACTS[i]}</div>
+      </div>`;
+  });
+}
+
+// ── PER-CLASS ACCURACY ────────────────────────────────────
+
+function buildClassGrid() {
+  const g = document.getElementById('classGrid');
+  CLASS_RESULTS.forEach(({digit,correct,total}) => {
+    const pct = (correct/total*100).toFixed(1);
+    g.innerHTML += `
+      <div class="class-cell">
+        <div class="cc-digit">${digit}</div>
+        <div class="cc-bar-bg">
+          <div class="cc-bar-fill" style="width:${pct}%"></div>
+        </div>
+        <div class="cc-pct">${pct}%</div>
+        <div class="cc-detail">${correct} / ${total} correct</div>
+      </div>`;
+  });
+}
+
+// ── NETWORK CANVAS ────────────────────────────────────────
+
+const NET_MAX = 8;
+let netAF = null;
+
+function getPositions(canvas) {
+  const W = canvas.width, H = canvas.height;
+  const mX = 55, mY = 42, mB = 32;
+  const vis = LAYER_DIMS.map(d => Math.min(d, NET_MAX));
+  const pos = LAYER_DIMS.map((_,l) => {
+    const x  = mX + l * ((W - 2*mX) / (LAYER_DIMS.length - 1));
+    const n  = vis[l];
+    const sp = (H - mY - mB) / (n + 1);
+    return Array.from({length:n}, (_,i) => ({
+      x: Math.round(x), y: Math.round(mY + sp*(i+1))
+    }));
+  });
+  return {pos, vis};
+}
+
+function drawNetwork(canvas, t) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  const {pos, vis} = getPositions(canvas);
+  const A = '74,143,255';
+
+  const pulse = LAYER_DIMS.map((d,l) =>
+    Array.from({length:Math.min(d,NET_MAX)}, (_,i) =>
+      0.09 + 0.055 * Math.sin(t*0.6 + l*1.5 + i*0.9)
+    )
+  );
+
+  // connections
+  for (let l = 0; l < LAYER_DIMS.length-1; l++) {
+    for (let i = 0; i < vis[l]; i++) {
+      for (let j = 0; j < vis[l+1]; j++) {
+        const from = pos[l][i], to = pos[l+1][j];
+        const mag  = pulse[l][i] * pulse[l+1][j];
+        const grad = ctx.createLinearGradient(from.x,from.y,to.x,to.y);
+        const a0 = 0.13 + mag*0.5, a1 = 0.05 + mag*0.18;
+        grad.addColorStop(0,   `rgba(${A},${Math.min(1,a0).toFixed(3)})`);
+        grad.addColorStop(0.5, `rgba(${A},${Math.min(1,(a0+a1)/2).toFixed(3)})`);
+        grad.addColorStop(1,   `rgba(${A},${Math.min(1,a1).toFixed(3)})`);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth   = 0.55 + mag*1.2;
+        ctx.shadowBlur  = mag > 0.09 ? 4 : 0;
+        ctx.shadowColor = `rgba(${A},.4)`;
+        ctx.beginPath(); ctx.moveTo(from.x,from.y); ctx.lineTo(to.x,to.y); ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+    }
+  }
+
+  // neurons
+  for (let l = 0; l < LAYER_DIMS.length; l++) {
+    const isOut = l === LAYER_DIMS.length-1;
+    for (let i = 0; i < vis[l]; i++) {
+      const {x,y} = pos[l][i];
+      const mag = pulse[l][i];
+      const r   = (isOut ? 8 : 6) + mag*2.5;
+      // halo
+      const halo = ctx.createRadialGradient(x,y,0,x,y,r*4.5);
+      halo.addColorStop(0, `rgba(${A},${(mag*.28).toFixed(3)})`);
+      halo.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.beginPath(); ctx.arc(x,y,r*4.5,0,Math.PI*2); ctx.fillStyle=halo; ctx.fill();
+      // fill
+      const fill = ctx.createRadialGradient(x,y,0,x,y,r);
+      fill.addColorStop(0, `rgba(${A},${(0.22+mag*.4).toFixed(3)})`);
+      fill.addColorStop(1, `rgba(${A},${(0.05+mag*.1).toFixed(3)})`);
+      ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle=fill; ctx.fill();
+      // ring
+      ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+      ctx.strokeStyle = `rgba(${A},${(0.38+mag*.62).toFixed(3)})`;
+      ctx.lineWidth   = isOut ? 2 : 1.4;
+      ctx.shadowBlur  = 6; ctx.shadowColor=`rgba(${A},${(mag*.7).toFixed(2)})`;
+      ctx.stroke(); ctx.shadowBlur = 0;
+    }
+    if (LAYER_DIMS[l] > NET_MAX) {
+      ctx.fillStyle=`rgba(${A},.4)`; ctx.font='11px IBM Plex Mono'; ctx.textAlign='center';
+      ctx.fillText('···', pos[l][vis[l]-1].x, pos[l][vis[l]-1].y+20);
+    }
+  }
+
+  // labels
+  ctx.shadowBlur=0; ctx.font='9px IBM Plex Mono'; ctx.textAlign='center';
+  for (let l = 0; l < LAYER_DIMS.length; l++) {
+    const x = pos[l][0].x;
+    ctx.fillStyle=`rgba(${A},.6)`; ctx.fillText(LAYER_LABELS[l], x, 20);
+    ctx.fillStyle='rgba(74,84,112,.8)'; ctx.fillText(LAYER_DIMS[l]+' units', x, H-10);
+  }
+}
+
+function resizeNet() {
+  const wrap = document.getElementById('net-wrap');
+  const c    = document.getElementById('net-canvas');
+  c.width  = wrap.clientWidth;
+  c.height = 300;
+}
+
+function startIdle() {
+  const c = document.getElementById('net-canvas');
+  function frame() { drawNetwork(c, Date.now()/1000); netAF = requestAnimationFrame(frame); }
+  netAF = requestAnimationFrame(frame);
+}
+
+// ── INIT ──────────────────────────────────────────────────
+
+window.addEventListener('DOMContentLoaded', () => {
+  buildLossChart();
+  buildArch();
+  buildClassGrid();
+  resizeNet();
+  window.addEventListener('resize', resizeNet);
+  startIdle();
+});
+
+</script>
+</body>
+</html>
